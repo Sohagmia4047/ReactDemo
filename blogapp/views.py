@@ -1,10 +1,15 @@
 from django.shortcuts import render
 from blogapp.models import Blog
-from blogapp.serializers import BlogSerializer, UpdateUserProfileSerializer, UserRegistrationSerializer
+from blogapp.serializers import BlogSerializer,UserInfoSerializer, SimpleAuthorSerializer, UpdateUserProfileSerializer, UserRegistrationSerializer
 from rest_framework .response import Response
 from rest_framework import status
+from django.contrib.auth import get_user_model
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.decorators import api_view, permission_classes
+from rest_framework.pagination import PageNumberPagination
+
+class BlogListPagination(PageNumberPagination):
+    page_size = 6
 
 @api_view(["POST"])
 def register_user(request):
@@ -13,6 +18,12 @@ def register_user(request):
         serializer.save()
         return Response(serializer.data)
     return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+def get_blog(request, slug):
+    blog = Blog.objects.get(slug=slug)
+    serializer = BlogSerializer(blog)
+    return Response(serializer.data)
 
 
 @api_view(['PUT'])
@@ -39,8 +50,10 @@ def create_blog(request):
 @api_view(["GET"])
 def blog_list(request):
     blogs = Blog.objects.all()
-    serializer = BlogSerializer(blogs, many=True)
-    return Response(serializer.data)
+    paginator = BlogListPagination()
+    paginated_blogs = paginator.paginate_queryset(blogs, request)
+    serializer = BlogSerializer(paginated_blogs, many=True)
+    return paginator.get_paginated_response(serializer.data)
 
 @api_view(["PUT"])
 @permission_classes([IsAuthenticated])
@@ -64,3 +77,27 @@ def delete_blog(request, pk):
         return Response({"error": "You are not the author of this blog"}, status=status.HTTP_403_FORBIDDEN)
     blog.delete()
     return Response({"message": "Blog deleted successfully"}, status=status.HTTP_204_NO_CONTENT)
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def get_username(request):
+    user = request.user
+    username = user.username
+    return Response({"username": username})
+
+@api_view(["GET"])
+def get_userinfo(request, username):
+    User = get_user_model()
+    user = User.objects.get(username=username)
+    serializer = UserInfoSerializer(user)
+    return Response(serializer.data)
+
+@api_view(["GET"])
+def get_user(request, email):
+    User = get_user_model()
+    try:
+        existing_user = User.objects.get(email=email)
+        serializer = SimpleAuthorSerializer(existing_user)
+        return Response(serializer.data, status=status.HTTP_200_OK)
+    except User.DoesNotExist:
+        return Response({"detail": "User not found."}, status=status.HTTP_404_NOT_FOUND)

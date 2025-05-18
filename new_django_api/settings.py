@@ -141,7 +141,7 @@ REST_FRAMEWORK = {
 }
 
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=60),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
 }
 
 
@@ -149,4 +149,5 @@ CORS_ALLOWED_ORIGINS = [
 "http://localhost:5173",
 "http://localhost:5174",
 "http://localhost:5175",
+"https://sohagfriend.onrender.com"
 ]
